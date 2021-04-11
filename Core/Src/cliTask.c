@@ -53,10 +53,6 @@ void StartCliTask(void const * argument)
   cliStream = openSerialStream(&huart3, uartTx3SemaphoreIrqHandle, uartRx3SemaphoreIrqHandle, uartTx3SemaphoreHandle, uartRx3SemaphoreHandle);
   cmdStateConfigure(&cliState, cliStream, commands, NR_NORMAL);
 
-  //uint8_t dta;
-  //HAL_UART_Transmit_IT(&huart3,  "To jest test", 13);
-
-
   fprintf(cliStream, "Restart\r\n");
   fflush(cliStream);
 
