@@ -21,8 +21,7 @@
 #include "cmsis_os.h"
 
 
-FILE* openSerialStream(UART_HandleTypeDef *uartHandle, osSemaphoreId uartTxSemaphoreHandle, osSemaphoreId uartTxIrqSemaphoreHandle, osSemaphoreId uartRxSemaphoreHandle, osSemaphoreId uartRxIrqSemaphoreHandle);
-
+FILE* openSerialStream(UART_HandleTypeDef *uartHandle);
 
 
 struct StreamSerialHandler

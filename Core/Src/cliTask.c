@@ -50,14 +50,16 @@ void StartCliTask(void const * argument)
   /* USER CODE BEGIN StartCliTask */
   /* Infinite loop */
 
-  cliStream = openSerialStream(&huart3, uartTx3SemaphoreIrqHandle, uartRx3SemaphoreIrqHandle, uartTx3SemaphoreHandle, uartRx3SemaphoreHandle);
-  cmdStateConfigure(&cliState, cliStream, commands, NR_NORMAL);
-
+  cliStream = openSerialStream(&huart3);
   fprintf(cliStream, "Restart\r\n");
   fflush(cliStream);
 
+  cmdStateConfigure(&cliState, cliStream, commands, NR_NORMAL);
 
-  int iter = 0;
+  cmdlineInputFunc('\r', &cliState);
+  cliMainLoop(&cliState);
+  fflush(cliStream);
+
   for(;;)
   {
 	int x = fgetc(cliStream);
@@ -67,16 +69,6 @@ void StartCliTask(void const * argument)
     cmdlineInputFunc(x, &cliState);
     cliMainLoop(&cliState);
 	fflush(cliStream);
-
-//	fputc(x, cliStream);
-	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-	continue;
-
-	osDelay(500);
-	fprintf(cliStream, "Test nr %03d\r\n", iter++);
-	fflush(cliStream);
-
-	continue;
   }
   /* USER CODE END StartCliTask */
 }

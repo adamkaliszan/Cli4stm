@@ -17,8 +17,8 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int remaining
 #define NO_OF_SERIAL_UART_HANDLERS 1
 #endif
 
-static struct StreamSerialHandler StramSerialHandlers[NO_OF_SERIAL_UART_HANDLERS];
-static int noOfSerialHandlers = 0;
+static struct StreamSerialHandler StreamSerialHandlers[NO_OF_SERIAL_UART_HANDLERS];
+volatile static int noOfSerialHandlers = 0;
 
 cookie_io_functions_t dummy_cookie_funcs = {
   .read = dummy_cookie_read,
@@ -27,22 +27,30 @@ cookie_io_functions_t dummy_cookie_funcs = {
   .close = 0
 };
 
-FILE* openSerialStream(UART_HandleTypeDef *uartHandle, osSemaphoreId uartTxSemaphoreHandle, osSemaphoreId uartTxIrqSemaphoreHandle, osSemaphoreId uartRxSemaphoreHandle, osSemaphoreId uartRxIrqSemaphoreHandle)
+FILE* openSerialStream(UART_HandleTypeDef *uartHandle)
 {
+	FILE *result = NULL;
+
 	if (noOfSerialHandlers >= NO_OF_SERIAL_UART_HANDLERS)
-		return NULL;
+		goto exit;
 
-	StramSerialHandlers[noOfSerialHandlers].uartTxSemaphoreHandle    = uartTxSemaphoreHandle;
-	StramSerialHandlers[noOfSerialHandlers].uartTxSemaphoreIrqHandle = uartTxIrqSemaphoreHandle;
-	StramSerialHandlers[noOfSerialHandlers].uartRxSemaphoreHandle    = uartRxSemaphoreHandle;
-	StramSerialHandlers[noOfSerialHandlers].uartRxSemaphoreIrqHandle = uartRxIrqSemaphoreHandle;
-	StramSerialHandlers[noOfSerialHandlers].rxDtaSize                = 0;
+	osSemaphoreDef_t tmp = {.controlblock = NULL};
 
-	return fopencookie(&StramSerialHandlers[noOfSerialHandlers++], "r+", dummy_cookie_funcs);
+	StreamSerialHandlers[noOfSerialHandlers].device                   = uartHandle;
+	StreamSerialHandlers[noOfSerialHandlers].uartTxSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
+	StreamSerialHandlers[noOfSerialHandlers].uartTxSemaphoreIrqHandle = osSemaphoreCreate(&tmp, 1);
+	StreamSerialHandlers[noOfSerialHandlers].uartRxSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
+	StreamSerialHandlers[noOfSerialHandlers].uartRxSemaphoreIrqHandle = osSemaphoreCreate(&tmp, 1);
+	StreamSerialHandlers[noOfSerialHandlers].rxDtaSize                = 0;
+
+	result = fopencookie(&StreamSerialHandlers[noOfSerialHandlers], "r+", dummy_cookie_funcs);
+	noOfSerialHandlers++;
+exit:
+	return result;
 }
 
 
-static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int remainingSize)
+static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
 {
 	struct StreamSerialHandler *serialHandler = (struct StreamSerialHandler *)cookie;
 
@@ -51,23 +59,16 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int remaining
     if (osSemaphoreWait(serialHandler->uartRxSemaphoreHandle, 10000) != osOK)
 	    goto exit;
 
-    while (remainingSize > 0)
-    {
-    	if (osSemaphoreWait(serialHandler->uartRxSemaphoreIrqHandle, 100) != osOK)
-    		goto exit2;
+  	osSemaphoreWait(serialHandler->uartRxSemaphoreIrqHandle, 0); //TODO use signals
 
-    	HAL_UARTEx_ReceiveToIdle_IT(serialHandler->device, (uint8_t *)buf, remainingSize);
+   	HAL_UARTEx_ReceiveToIdle_IT(serialHandler->device, (uint8_t *)buf, size);
 
-    	if (osSemaphoreWait(serialHandler->uartRxSemaphoreIrqHandle, 100) != osOK)
-    		goto exit2;
+   	while (osSemaphoreWait(serialHandler->uartRxSemaphoreIrqHandle, 1000) != osOK)
+   		;
 
-        remainingSize-= serialHandler->rxDtaSize;
-        buf+= serialHandler->rxDtaSize;
-        result+= serialHandler->rxDtaSize;
+    result+= serialHandler->rxDtaSize;
+  	osSemaphoreRelease(serialHandler->uartRxSemaphoreIrqHandle);
 
-    	osSemaphoreRelease(serialHandler->uartRxSemaphoreIrqHandle);
-    }
-exit2:
     osSemaphoreRelease(serialHandler->uartRxSemaphoreHandle);
 exit:
 	return result;
@@ -108,7 +109,7 @@ exit:
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-	struct StreamSerialHandler *serialHandler = StramSerialHandlers;
+	struct StreamSerialHandler *serialHandler = StreamSerialHandlers;
 	for (int i=0; i < noOfSerialHandlers; i++, serialHandler++)
 	{
 		if (huart != serialHandler->device)
@@ -137,7 +138,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	struct StreamSerialHandler *serialHandler = StramSerialHandlers;
+	struct StreamSerialHandler *serialHandler = StreamSerialHandlers;
 	for (int i=0; i < noOfSerialHandlers; i++, serialHandler++)
 	{
 		if (huart != serialHandler->device)

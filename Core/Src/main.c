@@ -52,10 +52,6 @@ osThreadId cliTaskHandle;
 osMessageQId queueRxUart3Handle;
 uint8_t rxUart3Buffer[ 64 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t rxUart3ControlBlock;
-osSemaphoreId uartTx3SemaphoreIrqHandle;
-osSemaphoreId uartRx3SemaphoreIrqHandle;
-osSemaphoreId uartTx3SemaphoreHandle;
-osSemaphoreId uartRx3SemaphoreHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -117,23 +113,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
-
-  /* Create the semaphores(s) */
-  /* definition and creation of uartTx3SemaphoreIrq */
-  osSemaphoreDef(uartTx3SemaphoreIrq);
-  uartTx3SemaphoreIrqHandle = osSemaphoreCreate(osSemaphore(uartTx3SemaphoreIrq), 1);
-
-  /* definition and creation of uartRx3SemaphoreIrq */
-  osSemaphoreDef(uartRx3SemaphoreIrq);
-  uartRx3SemaphoreIrqHandle = osSemaphoreCreate(osSemaphore(uartRx3SemaphoreIrq), 1);
-
-  /* definition and creation of uartTx3Semaphore */
-  osSemaphoreDef(uartTx3Semaphore);
-  uartTx3SemaphoreHandle = osSemaphoreCreate(osSemaphore(uartTx3Semaphore), 1);
-
-  /* definition and creation of uartRx3Semaphore */
-  osSemaphoreDef(uartRx3Semaphore);
-  uartRx3SemaphoreHandle = osSemaphoreCreate(osSemaphore(uartRx3Semaphore), 1);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
