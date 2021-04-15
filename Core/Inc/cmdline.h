@@ -33,14 +33,20 @@
 #define CLI_STATE_MAX_ARGC 10
 #define CLI_STATE_BUF_LEN 256
 
-#define IO_printf(format, args...) fprintf(io, format, args)
-#define IO_msg(msg) fprintf(io, msg)
-#define IO_msg_const(msg) fprintf(io, msg)
 #define CMD_printf(format, args...) fprintf(state->myStdInOut, format, args)
 #define CMD_msg(msg) fprintf(state->myStdInOut, msg)
-#define CMD_msg_const(msg) fprintf(state->myStdInOut, msg)
 
-#define uintBuf_t uint16_t
+extern const char cmd_help[];
+extern const char cmd_help_help[];
+
+extern const char cmd_history[];
+extern const char cmd_help_history[];
+
+extern const char cmd_enable[];
+extern const char cmd_help_enable[];
+
+extern const char cmd_disable[];
+extern const char cmd_help_disable[];
 
 // constants/macros/typdefs
 struct CmdState;
@@ -127,14 +133,15 @@ struct CmdState
             char data [CLI_STATE_BUF_LEN];
             struct
             {
-                uintBuf_t length;               ///< Number of writen chars in buffer
-                uintBuf_t editPos;              ///< Edit position in the buffer
+                uint16_t length;               ///< Number of writen chars in buffer
+                uint16_t lastLength;           ///< Last number of written chars before enter
+                uint16_t editPos;              ///< Edit position in the buffer
             } input;
             
             struct
             {
-                uintBuf_t rdIdx;                ///< Read index
-                uintBuf_t wrIdx;                ///< Write Index
+                uint16_t rdIdx;                ///< Read index
+                uint16_t wrIdx;                ///< Write Index
                 uint8_t depthLength;          ///< Number of commands, that are stored
                 uint8_t depthIdx;             ///< Current cmd idx. 0: last command in history buffer                
             } history;            
@@ -194,6 +201,14 @@ void cmdPrintHelp(CliState_t *state);
  * @param mode             - command line interpreter mode
  */
 void cmdStateConfigure(CliState_t * state, FILE *stream, const Command_t *commands, enum CliModeState mode);
+
+
+CliExRes_t helpFunction           (CliState_t *state);
+CliExRes_t historyFunction        (CliState_t *state);
+CliExRes_t enableFunction         (CliState_t *state);
+CliExRes_t disableFunction        (CliState_t *state);
+CliExRes_t configureModeFunction  (CliState_t *state);
+
 
 //@}
 #endif

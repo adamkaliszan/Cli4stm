@@ -2,12 +2,12 @@
  * @file        cmdline.h
  * @author      Adam Kaliszan adam.kaliszan@gmail.com
  * @brief       Command-Line Interface Library
- * @ingroup     protocols
- * @version     0.9
+ * @ingroup     bash
+ * @version     0.91
  * Created      ???
- * Revised      2020.05.17
+ * Revised      2021.04.15
  * Editor Tabs  2
- * Target MCU   Atmel AVR Series xc8 and avrgcc compiler
+ * Target MCU   Cortex M
  *
  * @par Description
  * This library provides cammand lineinterpreter, that works on many instances.
@@ -31,22 +31,59 @@
 #include "cmdline.h"        // Configuration
 #include "vt100.h"          // vty100 constans
 
+const char cmd_help[] = "help";
+const char cmd_help_help[] = "Prints all available commands in current mode";
+
+const char cmd_history[] = "history";
+const char cmd_help_history[] = "Prints all available commands in current mode";
+
+const char cmd_enable[] = "enable";
+const char cmd_help_enable[] = "Go to priviliged mode";
+
+const char cmd_disable[] = "disable";
+const char cmd_help_disable[] = "Go to normal mode";
+
+extern const Command_t cmdListNormal[];
+extern const Command_t cmdListEnable[];
+extern const Command_t cmdListConfigure[];
+
+const Command_t cmdListNormal[] __attribute__((weak)) =
+{
+  {cmd_help,            cmd_help_help,            helpFunction,                0},
+  {cmd_history,         cmd_help_history,         historyFunction,             0},
+  {cmd_enable,          cmd_help_enable,          enableFunction,              0},
+  {NULL               , NULL,                     NULL,                        0}
+};
+
+const Command_t cmdListEnable[] __attribute__((weak)) =
+{
+  {cmd_help,            cmd_help_help,            helpFunction,                0},
+  {cmd_history,         cmd_help_history,         historyFunction,             0},
+  {cmd_disable,         cmd_help_disable,         enableFunction,              0},
+  {NULL               , NULL,                     NULL,                        0}
+};
+
+const Command_t cmdListConfigure[]  __attribute__((weak))=
+{
+  {cmd_help,            cmd_help_help,            helpFunction,                0},
+  {cmd_history,         cmd_help_history,         historyFunction,             0},
+  {cmd_enable,          cmd_help_enable,          enableFunction,              0},
+  {NULL               , NULL,                     NULL,                        0}
+};
 
 // Constans Strings
-const char cmdlinePromptNormal[]    = "DomOs>";
-const char cmdlinePromptEnable[]    = "DomOs#";
-const char cmdlinePromptConfigure[] = "DomOs@";
-const char cmdlineNotice[]          = "cmdline: ";
-const char cmdlineCmdNotFound[]     = "# nk";
+const char cmdlinePromptNormal[]    = "Cli>";
+const char cmdlinePromptEnable[]    = "Cli#";
+const char cmdlinePromptConfigure[] = "Cli@";
+const char cmdlineNotice[]          = "Cli: ";
+const char cmdlineCmdNotFound[]     = "# NA";
 
 
 static void cliHint(CliState_t *state);
 static uint8_t hexToInt(uint8_t hex);
 inline static void vt100procCmd(char c, CliState_t *state);
 
-
 // internal commands
-
 static void cliHistorySave(CliState_t *state);
 static void cliRepaint(CliState_t *state);
 
@@ -60,8 +97,6 @@ static void cliInputDataProcess(CliState_t *state);
 
 static void cliPrintPrompt(CliState_t *state);
 static void cliPrintCommandNotFound(CliState_t *state);
-
-//static void cliHistoryLoad(CliState_t *state);
 
 /**
  * argc and argv to array.
@@ -87,9 +122,9 @@ void cliMainLoop(CliState_t *state)
             
         case SYNTAX_ERROR:
             CMD_msg("Syntax Error. Use: ");
-            CMD_msg_const(state->internalData.cmd.commandStr);
+            CMD_msg(state->internalData.cmd.commandStr);
             CMD_msg(" ");
-            CMD_msg_const(state->internalData.cmd.commandHelpStr);
+            CMD_msg(state->internalData.cmd.commandHelpStr);
             CMD_msg("\r\n");
             break;
             
@@ -128,7 +163,6 @@ void cmdStateConfigure(CliState_t * state, FILE *stream, const Command_t *comman
   state->internalData.buffer.history.rdIdx = CLI_STATE_BUF_LEN - 1;
   state->internalData.buffer.history.wrIdx = CLI_STATE_BUF_LEN - 1;  
 }
-
 
 /**
  * Process Vt100 protocol command
@@ -252,7 +286,6 @@ inline static void _cliInputBufferInsert(char c, CliState_t *state)
     }
 /// insert character
     state->internalData.buffer.data[state->internalData.buffer.input.editPos++] = c;        /// Insert the new character
-
 }
 
 inline static void _cliInputBufferClear(CliState_t *state)
@@ -287,7 +320,7 @@ inline static void cliAddInputData(char c, CliState_t *state)
     }
     else /// edit/cursor position != end of buffer
     {
-        _cliInputBufferInsert(c, state);            /// insert the new char in the midde of line
+        _cliInputBufferInsert(c, state);            /// insert the new char in the middle of line
         cliRepaint(state);                          /// Rewrite the existing CLI line
     }
     state->internalData.state = CLI_ST_READING_CMD;
@@ -295,7 +328,7 @@ inline static void cliAddInputData(char c, CliState_t *state)
 
 inline static void cliAddInputBS(CliState_t *state)
 {
-    uintBuf_t i;
+    uint16_t i;
     if(state->internalData.buffer.input.editPos > 0)
     {
         state->internalData.buffer.input.length--;
@@ -327,7 +360,7 @@ inline static void cliAddInputBS(CliState_t *state)
 
 inline static void cliAddInputDelete(CliState_t *state)
 {
-    uintBuf_t i;
+    uint16_t i;
     for (i = state->internalData.buffer.input.editPos; i<state->internalData.buffer.input.length; i++)
     {
         state->internalData.buffer.data[i] = state->internalData.buffer.data[i+1];
@@ -381,7 +414,7 @@ static void cliHint(CliState_t *state)
         {
             if (strncmp(state->internalData.buffer.data, tmpCmd->commandStr, state->internalData.buffer.input.length) == 0)
             {
-                CMD_msg_const(tmpCmd->commandStr);
+                CMD_msg(tmpCmd->commandStr);
                 CMD_msg(" ");
             }
             tmpCmd++;
@@ -400,6 +433,8 @@ inline static void cliAddInputCR(CliState_t *state)
     fputc(ASCII_CR         , state->myStdInOut); /// user pressed [ENTER]
     fputc(ASCII_LF         , state->myStdInOut); /// echo CR and LF to terminal
 
+
+    state->internalData.buffer.input.lastLength = state->internalData.buffer.input.length;
     state->internalData.buffer.data[state->internalData.buffer.input.length++] = '\0';       /// add null termination to command
     state->internalData.buffer.input.editPos = 0;
 }
@@ -471,8 +506,7 @@ exit:
 
 void cliRepaint(CliState_t *state)
 {
-    uintBuf_t i;
-
+    uint16_t i;
 /// carriage return
     fputc(ASCII_CR         , state->myStdInOut);
 /// print fresh prompt
@@ -483,13 +517,19 @@ void cliRepaint(CliState_t *state)
     {
         fputc(state->internalData.buffer.data[i], state->myStdInOut);
     }
-    i = CLI_STATE_BUF_LEN - state->internalData.buffer.input.length;
-    while (i--)
-        fputc(' ', state->myStdInOut);
 
-    i = CLI_STATE_BUF_LEN - state->internalData.buffer.input.editPos;
-    while (i--)
-        fputc(ASCII_BS,  state->myStdInOut);
+    if (state->internalData.buffer.input.lastLength > state->internalData.buffer.input.length)
+    {
+        i = state->internalData.buffer.input.lastLength - state->internalData.buffer.input.length;
+        while (i--)
+            fputc(' ', state->myStdInOut);
+
+        i = state->internalData.buffer.input.lastLength - state->internalData.buffer.input.editPos;
+        while (i--)
+            fputc(ASCII_BS,  state->myStdInOut);
+
+        state->internalData.buffer.input.lastLength = state->internalData.buffer.input.length;
+    }
 }
 
 void cliHistoryLoadAndMovePointer(CliState_t *state)
@@ -613,7 +653,6 @@ void cliInputDataProcess(CliState_t *state)
     state->internalData.buffer.input.editPos = 0;
 }
 
-
 static void cliInputDataParse(CliState_t *state)
 {
     char *data = state->internalData.buffer.data;
@@ -650,17 +689,13 @@ static void cliInputDataParse(CliState_t *state)
 
 static void cliHistorySave(CliState_t *state)
 {
-    
-    uintBuf_t cmdDtaLen;
-    uintBuf_t dstIdx;
-    uintBuf_t srcIdx;    
-    uint8_t i;
+    uint16_t cmdDtaLen;
+    uint16_t dstIdx;
+    uint16_t srcIdx;
+    uint16_t isInHistoryUnderIdx = 0;
+    uint16_t i;
     
     cliUnparse(state);
-
-    
-    uintBuf_t isInHistoryUnderIdx = 0;
-    
     dstIdx = CLI_STATE_BUF_LEN-1;
     
     for (i=0; i < state->internalData.buffer.history.depthLength; i++)
@@ -695,9 +730,7 @@ static void cliHistorySave(CliState_t *state)
             if (state->internalData.buffer.history.depthLength == 0)
                 break;
         }
-
 /// SHIFT
-    
         cmdDtaLen = state->internalData.buffer.input.length;
         dstIdx = state->internalData.buffer.history.wrIdx - cmdDtaLen;
         srcIdx = state->internalData.buffer.history.wrIdx + 1;
@@ -765,27 +798,27 @@ static void cliUnparse(CliState_t *state)
 void cliPrintCommandNotFound(CliState_t *state)
 {
     const char * ptr;
-    CMD_msg_const(cmdlineNotice);
+    CMD_msg(cmdlineNotice);
 /// print the offending command
     ptr = state->internalData.buffer.data;  //TODO Adam convert '\0' into ' '
     while((*ptr) && (*ptr != ' '))
         fputc(*ptr++    , state->myStdInOut);
 
     CMD_msg(": ");
-    CMD_msg_const(cmdlineCmdNotFound);
+    CMD_msg(cmdlineCmdNotFound);
     CMD_msg("\r\n");
 }
 
 void cmdPrintHistory(CliState_t *state)
 {
-    uintBuf_t i;
-    uintBuf_t rdIdxOld = CLI_STATE_BUF_LEN -1;
+    uint16_t i;
+    uint16_t rdIdxOld = CLI_STATE_BUF_LEN -1;
     
     CMD_printf("History length %d (%d bytes)\r\n", state->internalData.buffer.history.depthLength, CLI_STATE_BUF_LEN - 1 - state->internalData.buffer.history.wrIdx);
     
     for (i=0; i < state->internalData.buffer.history.depthLength; i++)
     {
-        CMD_printf("%2d (idx %3d) ", i+1, rdIdxOld);
+        CMD_printf("%2d ", i+1);
         while (state->internalData.buffer.data[rdIdxOld] != '\0')
         {
             fputc(state->internalData.buffer.data[rdIdxOld--], state->myStdInOut);
@@ -861,9 +894,9 @@ void cmdPrintHelp(CliState_t *state)
     const Command_t *tmpPtr = state->internalData.cmdList;
     do
     {
-        CMD_msg_const(tmpPtr->commandStr);
+        CMD_msg(tmpPtr->commandStr);
         CMD_msg("\t");
-        CMD_msg_const(tmpPtr->commandHelpStr);
+        CMD_msg(tmpPtr->commandHelpStr);
         CMD_msg("\r\n");
         tmpPtr++;
     }
@@ -873,19 +906,63 @@ void cmdPrintHelp(CliState_t *state)
 void cliPrintPrompt(CliState_t *state)
 {
   // print a new command prompt
-  switch (state->internalData.cliMode)
-  {
-    case NR_NORMAL:
-      CMD_msg_const(cmdlinePromptNormal);
-      break;
-    case NR_ENABLE:
-      CMD_msg_const(cmdlinePromptEnable);
-      break;
-    case NR_CONFIGURE:
-      CMD_msg_const(cmdlinePromptConfigure);
-      break;
-    default:
-      CMD_msg_const(cmdlinePromptNormal);
-      break;
-  }
+    switch (state->internalData.cliMode)
+    {
+      case NR_NORMAL:
+        CMD_msg(cmdlinePromptNormal);
+        break;
+      case NR_ENABLE:
+        CMD_msg(cmdlinePromptEnable);
+        break;
+      case NR_CONFIGURE:
+        CMD_msg(cmdlinePromptConfigure);
+        break;
+      default:
+        CMD_msg(cmdlinePromptNormal);
+        break;
+    }
+}
+
+CliExRes_t historyFunction(CliState_t *state)
+{
+    cmdPrintHistory(state);
+    return OK_SILENT;
+}
+
+CliExRes_t helpFunction(CliState_t *state)
+{
+    cmdPrintHelp(state);
+    return OK_SILENT;
+}
+
+CliExRes_t enableFunction         (CliState_t *state)
+{
+    CliExRes_t result = ERROR_OPERATION_NOT_ALLOWED;
+    if (state->internalData.cliMode != RESTRICTED_NORMAL)
+    {
+        state->internalData.cmdList = cmdListEnable;
+        state->internalData.cliMode = NR_ENABLE;
+        result = OK_SILENT;
+    }
+    return result;
+}
+
+CliExRes_t disableFunction        (CliState_t *state)
+{
+    state->internalData.cmdList = cmdListNormal;
+    if (state->internalData.cliMode != RESTRICTED_NORMAL)
+    {
+        state->internalData.cliMode = NR_NORMAL;
+    }
+    return OK_SILENT;
+}
+
+CliExRes_t configureModeFunction  (CliState_t *state)
+{
+    state->internalData.cmdList = cmdListConfigure;
+    if (state->internalData.cliMode != RESTRICTED_NORMAL)
+    {
+        state->internalData.cliMode = NR_CONFIGURE;
+    }
+    return OK_SILENT;
 }

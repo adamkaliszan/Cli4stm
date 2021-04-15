@@ -14,6 +14,7 @@
 #include "semphr.h"
 
 #include "cmdline.h"
+#include "vty.h"
 
 #include "streamSerial.h"
 
@@ -22,27 +23,11 @@
 #include "lwip.h"
 
 extern UART_HandleTypeDef huart3;
-extern osSemaphoreId uartTx3SemaphoreIrqHandle;
-extern osSemaphoreId uartRx3SemaphoreIrqHandle;
-extern osSemaphoreId uartTx3SemaphoreHandle;
-extern osSemaphoreId uartRx3SemaphoreHandle;
 
 
 struct CmdState cliState;
 
 FILE *cliStream;
-
-CliExRes_t funFoo(CliState_t *state)
-{
-	fprintf(state->myStdInOut, "Bar\r\n");
-	return OK_SILENT;
-}
-
-Command_t commands[] =
-{
-		{"Foo", "Examplary Foo function", funFoo, 1},
-		{NULL, NULL, NULL, 0}
-};
 
 
 void StartCliTask(void const * argument)
@@ -54,7 +39,7 @@ void StartCliTask(void const * argument)
   fprintf(cliStream, "Restart\r\n");
   fflush(cliStream);
 
-  cmdStateConfigure(&cliState, cliStream, commands, NR_NORMAL);
+  cmdStateConfigure(&cliState, cliStream, cmdListNormal, NR_NORMAL);
 
   cmdlineInputFunc('\r', &cliState);
   cliMainLoop(&cliState);
