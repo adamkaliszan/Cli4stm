@@ -2,6 +2,14 @@
 Command Line Interpreter for Stm32 microcontrolers.
 The project was ported from https://github.com/adamkaliszan/FreeRtosOnAvr project.
 
+Very height memory optimization (shared array for command buffer and history).
+
+Functionality:
+- commands completition (tab key)
+- history (arrow up/down or history command)
+- arguments (argc and argv)
+- command groups (normal, enabled and configuration)
+
 
 ## Exemplary user command
 ```
