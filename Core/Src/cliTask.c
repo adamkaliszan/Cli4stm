@@ -20,7 +20,10 @@
 
 #include "stm32h7xx_hal.h"
 #include "cmsis_os.h"
+
 #include "lwip.h"
+#include "udp.h"
+
 
 extern UART_HandleTypeDef huart3;
 

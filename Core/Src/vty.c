@@ -4,6 +4,7 @@
 #include "cmdline.h"
 
 #include "vty.h"
+#include "lwip.h"
 
 static CliExRes_t statusFunction         (CliState_t *state);
 static CliExRes_t sumFunction            (CliState_t *state);
@@ -43,7 +44,7 @@ const Command_t cmdListConfigure[] =
 static CliExRes_t statusFunction(CliState_t *state)
 {
 	fprintf(state->myStdInOut, "Status.... not implemented yet\r\n");
-    //printStatus(state->myStdInOut);
+	//printStatus(state->myStdInOut);
     return OK_SILENT;
 }
 
