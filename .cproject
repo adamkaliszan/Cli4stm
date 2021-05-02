@@ -271,6 +271,10 @@
                                     									
                                     <listOptionValue builtIn="false" value="USE_HAL_DRIVER"/>
                                     									
+                                    <listOptionValue builtIn="false" value="_GNU_SOURCE"/>
+                                    									
+                                    <listOptionValue builtIn="false" value="DATA_IN_D2_SRAM"/>
+                                    									
                                     <listOptionValue builtIn="false" value="STM32H743xx"/>
                                     								
                                 </option>
