@@ -49,6 +49,7 @@ UART_HandleTypeDef huart3;
 
 osThreadId defaultTaskHandle;
 osThreadId cliTaskHandle;
+osThreadId udpTaskHandle;
 osMessageQId queueRxUart3Handle;
 uint8_t rxUart3Buffer[ 64 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t rxUart3ControlBlock;
@@ -64,6 +65,7 @@ static void MX_USART3_UART_Init(void);
 static void MX_HRTIM_Init(void);
 void StartDefaultTask(void const * argument);
 void StartCliTask(void const * argument);
+void StartUdpTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -146,6 +148,10 @@ int main(void)
   /* definition and creation of cliTask */
   osThreadDef(cliTask, StartCliTask, osPriorityIdle, 0, 256);
   cliTaskHandle = osThreadCreate(osThread(cliTask), NULL);
+
+  /* definition and creation of udpTask */
+  osThreadDef(udpTask, StartUdpTask, osPriorityIdle, 0, 256);
+  udpTaskHandle = osThreadCreate(osThread(udpTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -456,6 +462,24 @@ __weak void StartCliTask(void const * argument)
 	    osDelay(1);
   }
   /* USER CODE END StartCliTask */
+}
+
+/* USER CODE BEGIN Header_StartUdpTask */
+/**
+* @brief Function implementing the udpTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartUdpTask */
+__weak void StartUdpTask(void const * argument)
+{
+  /* USER CODE BEGIN StartUdpTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartUdpTask */
 }
 
 /* MPU Configuration */
