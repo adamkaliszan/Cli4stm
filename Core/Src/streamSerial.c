@@ -5,6 +5,7 @@
  *      Author: adam
  */
 
+#include <stdio.h>
 #include <string.h>
 
 #include "streamSerial.h"
