@@ -27,3 +27,13 @@ static CliExRes_t sumFunction(CliState_t *state)
     return OK_SILENT;
 }
 ```
+
+## Connectivity
+Supported interfaces:
+- serial port (via stlinkV3)
+- udp (socat /dev/pts/1 UDP4-DATAGRAM:192.168.1.231:55151,broadcast)
+
+In the future:
+- Telnet (TCP)
+- Usb
+

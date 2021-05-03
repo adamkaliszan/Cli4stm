@@ -17,6 +17,7 @@
 #include "vty.h"
 
 #include "streamSerial.h"
+#include "streamUdp.h"
 
 #include "stm32h7xx_hal.h"
 #include "cmsis_os.h"
@@ -28,9 +29,12 @@
 extern UART_HandleTypeDef huart3;
 
 
-struct CmdState cliState;
+struct CmdState cliSerialState;
+struct CmdState cliUdpState;
 
-FILE *cliStream;
+
+FILE *cliSerialStream;
+FILE *cliUdpStream;
 
 
 void StartCliTask(void const * argument)
@@ -38,54 +42,61 @@ void StartCliTask(void const * argument)
   /* USER CODE BEGIN StartCliTask */
   /* Infinite loop */
 
-  cliStream = openSerialStream(&huart3);
-  fprintf(cliStream, "Restart\r\n");
-  fflush(cliStream);
+  cliSerialStream = openSerialStream(&huart3);
+  fprintf(cliSerialStream, "Restart\r\n");
+  fflush(cliSerialStream);
 
-  cmdStateConfigure(&cliState, cliStream, cmdListNormal, NR_NORMAL);
+  cmdStateConfigure(&cliSerialState, cliSerialStream, cmdListNormal, NR_NORMAL);
 
-  cmdlineInputFunc('\r', &cliState);
-  cliMainLoop(&cliState);
-  fflush(cliStream);
+  cmdlineInputFunc('\r', &cliSerialState);
+  cliMainLoop(&cliSerialState);
+  fflush(cliSerialStream);
 
   for(;;)
   {
-	int x = fgetc(cliStream);
+	int x = fgetc(cliSerialStream);
 	if (x == -1)
 		continue;
 
-    cmdlineInputFunc(x, &cliState);
-    cliMainLoop(&cliState);
-	fflush(cliStream);
+    cmdlineInputFunc(x, &cliSerialState);
+    cliMainLoop(&cliSerialState);
+	fflush(cliSerialStream);
   }
   /* USER CODE END StartCliTask */
 }
 
 void StartUdpTask(void const * argument)
 {
-  /* USER CODE BEGIN StartCliTask */
-  /* Infinite loop */
+  osDelay(1000);
 
-	/* USER CODE BEGIN 5 */
-	const char* message = "Hello UDP message!\n\r";
-	osDelay(1000);
+  ip_addr_t PC_IPADDR;
+  ip_addr_t PC_IPADDR_MASK;
 
-	ip_addr_t PC_IPADDR;
-	IP_ADDR4(&PC_IPADDR, 192, 168, 1, 120);
 
-	struct udp_pcb* my_udp = udp_new();
-	udp_connect(my_udp, &PC_IPADDR, 55151);
-	struct pbuf* udp_buffer = NULL;
+  IP_ADDR4(&PC_IPADDR, 192, 168, 1, 120);
+
+  IP_ADDR4(&PC_IPADDR_MASK, 0, 0, 0, 0);
+
+
+  cliUdpStream = openUdpStream(PC_IPADDR_MASK, PC_IPADDR, 55151);
+  fprintf(cliUdpStream, "Restart\r\n");
+  fflush(cliUdpStream);
+
+  cmdStateConfigure(&cliUdpState, cliUdpStream, cmdListNormal, NR_NORMAL);
+
+  cmdlineInputFunc('\r', &cliUdpState);
+  cliMainLoop(&cliUdpState);
+  fflush(cliUdpStream);
 
   for(;;)
   {
-	  osDelay(1000);
-	  udp_buffer = pbuf_alloc(PBUF_TRANSPORT, strlen(message), PBUF_RAM);
-	  if (udp_buffer != NULL) {
-	    memcpy(udp_buffer->payload, message, strlen(message));
-	    udp_send(my_udp, udp_buffer);
-	    pbuf_free(udp_buffer);
-	  }
+	int x = fgetc(cliUdpStream);
+	if (x == -1)
+		continue;
+
+    cmdlineInputFunc(x, &cliUdpState);
+    cliMainLoop(&cliUdpState);
+	fflush(cliUdpStream);
   }
   /* USER CODE END StartCliTask */
 }

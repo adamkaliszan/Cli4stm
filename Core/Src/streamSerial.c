@@ -2,7 +2,7 @@
  * streamSerial.c
  *
  *  Created on: Apr 11, 2021
- *      Author: adam
+ *      Author: Adam Kaliszan: adam.kaliszan@gmail.com
  */
 
 #include <stdio.h>
