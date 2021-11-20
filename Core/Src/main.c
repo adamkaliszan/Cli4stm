@@ -50,7 +50,6 @@ UART_HandleTypeDef huart3;
 osThreadId defaultTaskHandle;
 osThreadId cliSerialTaskHandle;
 osThreadId cliUdpTaskHandle;
-osThreadId cliTcpTaskHandle;
 osMessageQId queueRxUart3Handle;
 uint8_t rxUart3Buffer[ 64 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t rxUart3ControlBlock;
@@ -67,7 +66,6 @@ static void MX_HRTIM_Init(void);
 void StartDefaultTask(void const * argument);
 extern void StartCliTaskSerial(void const * argument);
 extern void StartCliTaskUdp(void const * argument);
-extern void StartCliTaskTcp(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -154,10 +152,6 @@ int main(void)
   /* definition and creation of cliUdpTask */
   osThreadDef(cliUdpTask, StartCliTaskUdp, osPriorityIdle, 0, 256);
   cliUdpTaskHandle = osThreadCreate(osThread(cliUdpTask), NULL);
-
-  /* definition and creation of cliTcpTask */
-  osThreadDef(cliTcpTask, StartCliTaskTcp, osPriorityIdle, 0, 256);
-  cliTcpTaskHandle = osThreadCreate(osThread(cliTcpTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */

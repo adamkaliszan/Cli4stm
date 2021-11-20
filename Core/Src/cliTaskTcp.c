@@ -5,7 +5,23 @@
 #include "streamTcp.h"
 #include "vty.h"
 
-void StartCliTaskTcp(void const * argument)
+
+osThreadId tcpTasks[NO_OF_TCP_SERVER_TASKS];
+
+static void StartCliTaskTcp(void const * argument);
+
+
+void StartTcpServer()
+{
+	for (int i=0; i < NO_OF_TCP_SERVER_TASKS; i++)
+	{
+		osThreadDef(tmpTask, StartCliTaskTcp, osPriorityNormal, 0, 256);
+		tcpTasks[i] = osThreadCreate(osThread(tmpTask), NULL);
+	}
+	startTcpServer(55151, tcpTasks);
+}
+
+static void StartCliTaskTcp(void const * argument)
 {
 	osDelay(1000);
 
@@ -15,11 +31,10 @@ void StartCliTaskTcp(void const * argument)
 
 	//Listen
 
-	startTcpServer(55151);
 
 	for(;;)
 	{
-		acceptTcpConnection(&cliTcpStreamIn, &cliTcpStreamOut, 0);
+		acceptTcpConnection(&cliTcpStreamIn, &cliTcpStreamOut, argument);
 		cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
 
 		for (;;)
