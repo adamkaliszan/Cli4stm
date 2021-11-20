@@ -10,9 +10,9 @@
  * Target MCU   Cortex M
  *
  * @par Description
- * This library provides cammand lineinterpreter, that works on many instances.
+ * This library provides Command Line Interpreter, that works on many instances.
  * Each instance requires: separate input/output stream, and separate instance of cmdState struct
- * The library was optimised under memory consumption.
+ * The library was optimized under memory consumption.
  *
  * @note: This code is currently below version 1.0, and therefore is considered
  * to be lacking in some functionality or documentation, or may not be fully
@@ -29,7 +29,7 @@
 #include <stdint.h>
 
 #include "cmdline.h"        // Configuration
-#include "vt100.h"          // vty100 constans
+#include "vt100.h"          // vty100 constants
 
 const char cmd_help[] = "help";
 const char cmd_help_help[] = "Prints all available commands in current mode";

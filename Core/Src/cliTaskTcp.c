@@ -13,21 +13,26 @@ void StartCliTaskTcp(void const * argument)
 	FILE *cliTcpStreamOut;
 	struct CmdState cliTcpState;
 
-
-	openTcpStreams(&cliTcpStreamIn, &cliTcpStreamOut, 55151);
-	cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
-
 	//Listen
+
+	startTcpServer(55151);
 
 	for(;;)
 	{
-		int x = fgetc(cliTcpStreamIn);
-		if (x == -1)
-			continue;
+		acceptTcpConnection(&cliTcpStreamIn, &cliTcpStreamOut, 0);
+		cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
 
-		cmdlineInputFunc(x, &cliTcpState);
-		cliMainLoop(&cliTcpState);
-		fflush(cliTcpStreamOut);
+		for (;;)
+		{
+			int x = fgetc(cliTcpStreamIn);
+			if (x == -1)
+				break;
+
+			cmdlineInputFunc(x, &cliTcpState);
+			cliMainLoop(&cliTcpState);
+			fflush(cliTcpStreamOut);
+		}
 	}
 	/* USER CODE END StartCliTask */
 }
+

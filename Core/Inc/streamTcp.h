@@ -8,12 +8,13 @@
 
 #include "lwip/ip_addr.h"
 
-int openTcpStreams(FILE** stramIn, FILE** streamOut, uint16_t portNo);
+void startTcpServer(uint16_t portNo);
+
+int acceptTcpConnection(FILE** stramIn, FILE** streamOut, int taskNo);
 
 struct StreamTcpHandler
 {
 	struct tcp_pcb *my_tcp;
-	uint16_t        dstPort;
 
 /// Receiver
 	osSemaphoreId   rxSemaphoreHandle;

@@ -22,7 +22,6 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int remaining
 #endif
 
 static struct StreamTcpHandler StreamTcpHandlers[NO_OF_TCP_STREAM_HANDLERS];
-volatile static int noOfTcpHandlers = 0;
 
 cookie_io_functions_t dummy_tcp_cookie_funcs = {
   .read = dummy_cookie_read,
@@ -33,29 +32,49 @@ cookie_io_functions_t dummy_tcp_cookie_funcs = {
 
 static err_t tcpRecHandler(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 
-int openTcpStreams(FILE** streamIn, FILE** streamOut, uint16_t portNo)
+
+static err_t acceptCallback(void *arg, struct tcp_pcb *newpcb, err_t err)
 {
-	if (noOfTcpHandlers >= NO_OF_TCP_STREAM_HANDLERS)
-	{
-		*streamIn  = NULL;
-		*streamOut = NULL;
-		return -1;
-	}
+	struct StreamTcpHandler *tcpHandler = NULL;
+    for (int i=0; i < NO_OF_TCP_STREAM_HANDLERS; i++)
+    {
+    	if (StreamTcpHandlers[i].my_tcp == NULL)
+    	{
+    		tcpHandler = &StreamTcpHandlers[i];
+    		break;
+    	}
+    }
+    if (tcpHandler == NULL)
+    	return ERR_CLSD;
 
-	StreamTcpHandlers[noOfTcpHandlers].my_tcp  = tcp_new();
-	StreamTcpHandlers[noOfTcpHandlers].dstPort = portNo;
+    tcpHandler->my_tcp = newpcb;
+    tcp_arg(newpcb, tcpHandler);
 
-	tcp_bind(StreamTcpHandlers[noOfTcpHandlers].my_tcp, NULL, portNo);
-	StreamTcpHandlers[noOfTcpHandlers].txBuffer   = NULL;
+    return ERR_OK;
+}
 
+void startTcpServer(uint16_t portNo)
+{
 	osSemaphoreDef_t tmp = {.controlblock = NULL};
-	StreamTcpHandlers[noOfTcpHandlers].txSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
-	StreamTcpHandlers[noOfTcpHandlers].rxSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
-	StreamTcpHandlers[noOfTcpHandlers].rxIrqSemaphoreHandle = osSemaphoreCreate(&tmp, 1);
+    for (int i=0; i < NO_OF_TCP_STREAM_HANDLERS; i++)
+    {
+        StreamTcpHandlers[i].txBuffer             = NULL;
+    	StreamTcpHandlers[i].txSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
+    	StreamTcpHandlers[i].rxSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
+    	StreamTcpHandlers[i].rxIrqSemaphoreHandle = osSemaphoreCreate(&tmp, 1);
+    }
 
-	*streamIn  = fopencookie(&StreamTcpHandlers[noOfTcpHandlers], "r", dummy_tcp_cookie_funcs);
-	*streamOut = fopencookie(&StreamTcpHandlers[noOfTcpHandlers], "w", dummy_tcp_cookie_funcs);
-	noOfTcpHandlers++;
+	struct tcp_pcb *sck = tcp_new();      // Step 1      Call tcp_new to create a pcb.
+	tcp_arg(sck, StreamTcpHandlers);      // Step 2      Optionally call tcp_arg to associate an application-specific value with the pcb.
+	tcp_bind(sck, NULL, portNo);          // Step 3      Call tcp_bind to specify the local IP address and port.
+	tcp_listen(sck);                      // Step 4      Call tcp_listen or tcp_listen_with_backlog. (note: these functions will free the pcb given as an argument and return a smaller listener pcb (e.g. tpcb = tcp_listen(tpcb)))
+    tcp_accept(sck, acceptCallback);      // Step 5      Call tcp_accept to specify the function to be called when a new connection arrives. Note that there is no possibility of a socket being accepted before specifying the callback, because this is all run on the tcpip_thread.
+}
+
+int acceptTcpConnection(FILE** streamIn, FILE** streamOut, int taskNo)
+{
+	*streamIn  = fopencookie(&StreamTcpHandlers[taskNo], "r", dummy_tcp_cookie_funcs);
+	*streamOut = fopencookie(&StreamTcpHandlers[taskNo], "w", dummy_tcp_cookie_funcs);
 
 	return 0;
 }
@@ -136,7 +155,6 @@ static ssize_t dummy_cookie_write(void *cookie, const char *buf, unsigned int si
     size = 0;
 	goto exit;
   }
-
 
   tcp_write(tcpHandler->my_tcp, buf, size, 0);
   tcp_output(tcpHandler->my_tcp);

@@ -50,6 +50,7 @@ UART_HandleTypeDef huart3;
 osThreadId defaultTaskHandle;
 osThreadId cliSerialTaskHandle;
 osThreadId cliUdpTaskHandle;
+osThreadId cliTcpTaskHandle;
 osMessageQId queueRxUart3Handle;
 uint8_t rxUart3Buffer[ 64 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t rxUart3ControlBlock;
@@ -64,8 +65,9 @@ static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_HRTIM_Init(void);
 void StartDefaultTask(void const * argument);
-void StartCliTaskSerial(void const * argument);
-void StartCliTaskUdp(void const * argument);
+extern void StartCliTaskSerial(void const * argument);
+extern void StartCliTaskUdp(void const * argument);
+extern void StartCliTaskTcp(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -152,6 +154,10 @@ int main(void)
   /* definition and creation of cliUdpTask */
   osThreadDef(cliUdpTask, StartCliTaskUdp, osPriorityIdle, 0, 256);
   cliUdpTaskHandle = osThreadCreate(osThread(cliUdpTask), NULL);
+
+  /* definition and creation of cliTcpTask */
+  osThreadDef(cliTcpTask, StartCliTaskTcp, osPriorityIdle, 0, 256);
+  cliTcpTaskHandle = osThreadCreate(osThread(cliTcpTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -443,42 +449,6 @@ void StartDefaultTask(void const * argument)
 	osDelay(1);
   }
   /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_StartCliTaskSerial */
-/**
-* @brief Function implementing the cliSerialTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartCliTaskSerial */
-__weak void StartCliTaskSerial(void const * argument)
-{
-  /* USER CODE BEGIN StartCliTaskSerial */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartCliTaskSerial */
-}
-
-/* USER CODE BEGIN Header_StartCliTaskUdp */
-/**
-* @brief Function implementing the cliUdpTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartCliTaskUdp */
-__weak void StartCliTaskUdp(void const * argument)
-{
-  /* USER CODE BEGIN StartCliTaskUdp */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartCliTaskUdp */
 }
 
 /* MPU Configuration */
