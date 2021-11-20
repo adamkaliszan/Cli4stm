@@ -23,8 +23,12 @@ void StartCliTaskUdp(void const * argument)
 	for(;;)
 	{
 		int x = fgetc(cliUdpStreamIn);
+
 		if (x == -1)
 			continue;
+
+		if (x == 127) // Backspace
+			x = 0x08;
 
 		cmdlineInputFunc(x, &cliUdpState);
 		cliMainLoop(&cliUdpState);
