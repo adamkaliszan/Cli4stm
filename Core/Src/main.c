@@ -48,8 +48,8 @@ HRTIM_HandleTypeDef hhrtim;
 UART_HandleTypeDef huart3;
 
 osThreadId defaultTaskHandle;
-osThreadId cliTaskHandle;
-osThreadId udpTaskHandle;
+osThreadId cliSerialTaskHandle;
+osThreadId cliUdpTaskHandle;
 osMessageQId queueRxUart3Handle;
 uint8_t rxUart3Buffer[ 64 * sizeof( uint8_t ) ];
 osStaticMessageQDef_t rxUart3ControlBlock;
@@ -64,8 +64,8 @@ static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_HRTIM_Init(void);
 void StartDefaultTask(void const * argument);
-void StartCliTask(void const * argument);
-void StartUdpTask(void const * argument);
+void StartCliTaskSerial(void const * argument);
+void StartCliTaskUdp(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -145,13 +145,13 @@ int main(void)
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 256);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* definition and creation of cliTask */
-  osThreadDef(cliTask, StartCliTask, osPriorityIdle, 0, 256);
-  cliTaskHandle = osThreadCreate(osThread(cliTask), NULL);
+  /* definition and creation of cliSerialTask */
+  osThreadDef(cliSerialTask, StartCliTaskSerial, osPriorityIdle, 0, 256);
+  cliSerialTaskHandle = osThreadCreate(osThread(cliSerialTask), (void*) &huart3);
 
-  /* definition and creation of udpTask */
-  osThreadDef(udpTask, StartUdpTask, osPriorityIdle, 0, 256);
-  udpTaskHandle = osThreadCreate(osThread(udpTask), NULL);
+  /* definition and creation of cliUdpTask */
+  osThreadDef(cliUdpTask, StartCliTaskUdp, osPriorityIdle, 0, 256);
+  cliUdpTaskHandle = osThreadCreate(osThread(cliUdpTask), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -445,41 +445,40 @@ void StartDefaultTask(void const * argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_StartCliTask */
+/* USER CODE BEGIN Header_StartCliTaskSerial */
 /**
-* @brief Function implementing the cliTask thread.
+* @brief Function implementing the cliSerialTask thread.
 * @param argument: Not used
 * @retval None
 */
-/* USER CODE END Header_StartCliTask */
-__weak void StartCliTask(void const * argument)
+/* USER CODE END Header_StartCliTaskSerial */
+__weak void StartCliTaskSerial(void const * argument)
 {
-  /* USER CODE BEGIN StartCliTask */
-  /* Infinite loop */
-  for(;;)
-  {
-//#error "Use cliTask.h"
-	    osDelay(1);
-  }
-  /* USER CODE END StartCliTask */
-}
-
-/* USER CODE BEGIN Header_StartUdpTask */
-/**
-* @brief Function implementing the udpTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartUdpTask */
-__weak void StartUdpTask(void const * argument)
-{
-  /* USER CODE BEGIN StartUdpTask */
+  /* USER CODE BEGIN StartCliTaskSerial */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartUdpTask */
+  /* USER CODE END StartCliTaskSerial */
+}
+
+/* USER CODE BEGIN Header_StartCliTaskUdp */
+/**
+* @brief Function implementing the cliUdpTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartCliTaskUdp */
+__weak void StartCliTaskUdp(void const * argument)
+{
+  /* USER CODE BEGIN StartCliTaskUdp */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END StartCliTaskUdp */
 }
 
 /* MPU Configuration */
@@ -518,6 +517,7 @@ void MPU_Config(void)
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
 
 }
+
 /**
   * @brief  Period elapsed callback in non blocking mode
   * @note   This function is called  when TIM17 interrupt took place, inside

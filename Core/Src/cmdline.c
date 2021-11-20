@@ -151,14 +151,15 @@ void cliMainLoop(CliState_t *state)
 
 static void cliHistoryRemoveOldest(CliState_t *state);
 
-void cmdStateConfigure(CliState_t * state, FILE *stream, const Command_t *commands, enum CliModeState mode)
+void cmdStateConfigure(CliState_t * state, FILE *streamIn, FILE *streamOut, const Command_t *commands, enum CliModeState mode)
 {
   memset(state, 0, sizeof(CliState_t));
 
   state->internalData.cliMode = mode;
   state->internalData.cmdList = commands;
  
-  state->myStdInOut = stream;
+  state->strIn  = streamIn;
+  state->strOut = streamOut;
   
   state->internalData.buffer.history.rdIdx = CLI_STATE_BUF_LEN - 1;
   state->internalData.buffer.history.wrIdx = CLI_STATE_BUF_LEN - 1;  
@@ -225,7 +226,7 @@ inline static void vt100procCmd(char c, CliState_t *state)
         }
         else
         {
-            fputc(ASCII_BEL, state->myStdInOut);
+            fputc(ASCII_BEL, state->strOut);
         }
         break;
 
@@ -251,11 +252,11 @@ inline static void vt100procCmd(char c, CliState_t *state)
             if (state->internalData.buffer.input.editPos > 0)
             {
                 state->internalData.buffer.input.editPos--;
-                fputc(ASCII_BS, state->myStdInOut);
+                fputc(ASCII_BS, state->strOut);
             }
             else
             {
-                fputc(ASCII_BEL, state->myStdInOut);
+                fputc(ASCII_BEL, state->strOut);
             }
         }
         break;
@@ -316,7 +317,7 @@ inline static void cliAddInputData(char c, CliState_t *state)
     if(state->internalData.buffer.input.editPos == state->internalData.buffer.input.length)
     {   
         _cliInputBufferAppend(c, state);            /// Add the new character on the end of line
-        fputc(c, state->myStdInOut);                /// echo character to the output
+        fputc(c, state->strOut);                /// echo character to the output
     }
     else /// edit/cursor position != end of buffer
     {
@@ -343,9 +344,9 @@ inline static void cliAddInputBS(CliState_t *state)
         state->internalData.buffer.data[state->internalData.buffer.input.length] = '\0';
         if(state->internalData.buffer.input.editPos == state->internalData.buffer.input.length)
         {   // No need to use CLI repaint
-            fputc(ASCII_BS         , state->myStdInOut);   // Move back
-            fputc(' '              , state->myStdInOut);   // Clear and move next
-            fputc(ASCII_BS         , state->myStdInOut);   // Move back again
+            fputc(ASCII_BS         , state->strOut);   // Move back
+            fputc(' '              , state->strOut);   // Clear and move next
+            fputc(ASCII_BS         , state->strOut);   // Move back again
         }
         else
         {
@@ -354,7 +355,7 @@ inline static void cliAddInputBS(CliState_t *state)
     }
     else
     {
-        fputc(ASCII_BEL          , state->myStdInOut);
+        fputc(ASCII_BEL          , state->strOut);
     }
 }
 
@@ -364,16 +365,16 @@ inline static void cliAddInputDelete(CliState_t *state)
     for (i = state->internalData.buffer.input.editPos; i<state->internalData.buffer.input.length; i++)
     {
         state->internalData.buffer.data[i] = state->internalData.buffer.data[i+1];
-        fputc(state->internalData.buffer.data[i], state->myStdInOut);
+        fputc(state->internalData.buffer.data[i], state->strOut);
     }
     if (state->internalData.buffer.input.length > state->internalData.buffer.input.editPos)
     {
-        fputc(' ', state->myStdInOut);            
+        fputc(' ', state->strOut);
         i = state->internalData.buffer.input.length - state->internalData.buffer.input.editPos;
         state->internalData.buffer.input.length--;
         while (i>0)
         {
-            fputc(ASCII_BS       , state->myStdInOut);
+            fputc(ASCII_BS, state->strOut);
             i--;
         }                
     }
@@ -430,8 +431,8 @@ inline static void cliAddInputCR(CliState_t *state)
     {
         state->internalData.state = CLI_ST_READING_CMD;
     }
-    fputc(ASCII_CR         , state->myStdInOut); /// user pressed [ENTER]
-    fputc(ASCII_LF         , state->myStdInOut); /// echo CR and LF to terminal
+    fputc(ASCII_CR, state->strOut); /// user pressed [ENTER]
+    fputc(ASCII_LF, state->strOut); /// echo CR and LF to terminal
 
 
     state->internalData.buffer.input.lastLength = state->internalData.buffer.input.length;
@@ -466,8 +467,8 @@ void cmdlineInputFunc(char c, CliState_t *state)
     if (state->internalData.buffer.input.length == CLI_STATE_BUF_LEN)
     {   /// Protection against buffer Overflow
         state->internalData.buffer.input.length--;
-        fputc(ASCII_BEL, state->myStdInOut);
-        fputc(ASCII_BS, state->myStdInOut);
+        fputc(ASCII_BEL, state->strOut);
+        fputc(ASCII_BS,  state->strOut);
     }
 
     if( (c >= 0x20) && (c < 0x7D) )
@@ -508,25 +509,25 @@ void cliRepaint(CliState_t *state)
 {
     uint16_t i;
 /// carriage return
-    fputc(ASCII_CR         , state->myStdInOut);
+    fputc(ASCII_CR, state->strOut);
 /// print fresh prompt
     cliPrintPrompt(state);
 /// print the new command line buffer
     i = state->internalData.buffer.input.length;
     for (i=0; i < state->internalData.buffer.input.length; i++)
     {
-        fputc(state->internalData.buffer.data[i], state->myStdInOut);
+        fputc(state->internalData.buffer.data[i], state->strOut);
     }
 
     if (state->internalData.buffer.input.lastLength > state->internalData.buffer.input.length)
     {
         i = state->internalData.buffer.input.lastLength - state->internalData.buffer.input.length;
         while (i--)
-            fputc(' ', state->myStdInOut);
+            fputc(' ', state->strOut);
 
         i = state->internalData.buffer.input.lastLength - state->internalData.buffer.input.editPos;
         while (i--)
-            fputc(ASCII_BS,  state->myStdInOut);
+            fputc(ASCII_BS,  state->strOut);
 
         state->internalData.buffer.input.lastLength = state->internalData.buffer.input.length;
     }
@@ -802,7 +803,7 @@ void cliPrintCommandNotFound(CliState_t *state)
 /// print the offending command
     ptr = state->internalData.buffer.data;  //TODO Adam convert '\0' into ' '
     while((*ptr) && (*ptr != ' '))
-        fputc(*ptr++    , state->myStdInOut);
+        fputc(*ptr++    , state->strOut);
 
     CMD_msg(": ");
     CMD_msg(cmdlineCmdNotFound);
@@ -821,7 +822,7 @@ void cmdPrintHistory(CliState_t *state)
         CMD_printf("%2d ", i+1);
         while (state->internalData.buffer.data[rdIdxOld] != '\0')
         {
-            fputc(state->internalData.buffer.data[rdIdxOld--], state->myStdInOut);
+            fputc(state->internalData.buffer.data[rdIdxOld--], state->strOut);
         }
         rdIdxOld--;
         CMD_msg("\r\n");

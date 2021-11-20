@@ -5,17 +5,10 @@
  *      Author: adam
  */
 
-#ifndef INC_STREAMSERIAL_H_
-#define INC_STREAMSERIAL_H_
+#ifndef INC_STREAM_SERIAL_H_
+#define INC_STREAM_SERIAL_H_
 
 #include <stdio.h>
-
-#include "cliTask.h"
-#include "task.h"
-#include "queue.h"
-#include "semphr.h"
-
-#include "cmdline.h"
 
 #include "stm32h7xx_hal.h"
 #include "cmsis_os.h"
@@ -38,7 +31,4 @@ struct StreamSerialHandler
 	uint8_t tmpTxBuffer[64];
 };
 
-
-
-
-#endif /* INC_STREAMSERIAL_H_ */
+#endif /* INC_STREAM_SERIAL_H_ */

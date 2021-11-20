@@ -33,8 +33,8 @@
 #define CLI_STATE_MAX_ARGC 10
 #define CLI_STATE_BUF_LEN 256
 
-#define CMD_printf(format, args...) fprintf(state->myStdInOut, format, args)
-#define CMD_msg(msg) fprintf(state->myStdInOut, msg)
+#define CMD_printf(format, args...) fprintf(state->strOut, format, args)
+#define CMD_msg(msg) fprintf(state->strOut, msg)
 
 extern const char cmd_help[];
 extern const char cmd_help_help[];
@@ -115,7 +115,8 @@ struct CmdState
 {
     uint8_t   argc;                            ///< Index of last argument
     const char *argv[CLI_STATE_MAX_ARGC];
-    FILE *myStdInOut;                          ///< Input / output stream descriptor
+    FILE *strIn;                               ///< Input / output stream descriptor
+    FILE *strOut;                              ///< Input / output stream descriptor
 
     struct
     {
@@ -196,11 +197,12 @@ void cmdPrintHelp(CliState_t *state);
 /**
  * Prepare the struct with LI state machine. Each instance of CLI has own state
  * @param state            - wskaźnik do struktury ze stanem sesji interpretera poleceń
- * @param *stream          - input/output stream
+ * @param *streamIn        - input stream
+ * @param *streamOut       - output stream
  * @param *commands        - pointer to the command table
  * @param mode             - command line interpreter mode
  */
-void cmdStateConfigure(CliState_t * state, FILE *stream, const Command_t *commands, enum CliModeState mode);
+void cmdStateConfigure(CliState_t * state, FILE *streamIn, FILE *streamOut, const Command_t *commands, enum CliModeState mode);
 
 
 CliExRes_t helpFunction           (CliState_t *state);

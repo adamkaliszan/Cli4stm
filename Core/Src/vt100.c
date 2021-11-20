@@ -37,33 +37,33 @@ void vt100Init(CliState_t *state)
   // initializes terminal to "power-on" settings
   // ESC c
 
- fprintf(state->myStdInOut, "\x1B\x63");
+ fprintf(state->strOut, "\x1B\x63");
 }
 
 void vt100ClearScreen(CliState_t *state)
 {
   // ESC [ 2 J
-  fprintf(state->myStdInOut, "\x1B[2J");
+  fprintf(state->strOut, "\x1B[2J");
 }
 
 void vt100SetAttr(uint8_t attr, CliState_t *state)
 {
   // ESC [ Ps m
-  fprintf(state->myStdInOut, "\x1B[%dm",attr);
+  fprintf(state->strOut, "\x1B[%dm",attr);
 }
 
 void vt100SetCursorMode(uint8_t visible, CliState_t *state)
 {
   if(visible)
   // ESC [ ? 25 h
-    fprintf(state->myStdInOut, "\x1B[?25h");
+    fprintf(state->strOut, "\x1B[?25h");
   else
   // ESC [ ? 25 l
-    fprintf(state->myStdInOut, "\x1B[?25l");
+    fprintf(state->strOut, "\x1B[?25l");
 }
 
 void vt100SetCursorPos(uint8_t line, uint8_t col, CliState_t *state)
 {
   // ESC [ Pl ; Pc H
-  fprintf(state->myStdInOut, "\x1B[%d;%dH",line,col);
+  fprintf(state->strOut, "\x1B[%d;%dH",line,col);
 }

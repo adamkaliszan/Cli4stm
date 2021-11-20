@@ -33,19 +33,19 @@ cookie_io_functions_t dummy_tcp_cookie_funcs = {
 
 static err_t tcpRecHandler(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 
-FILE* openTcpStream(ip_addr_t bindAddress, ip_addr_t clientAddr, uint16_t portNo)
+int openTcpStreams(FILE** streamIn, FILE** streamOut, uint16_t portNo)
 {
-	FILE *result = NULL;
-
 	if (noOfTcpHandlers >= NO_OF_TCP_STREAM_HANDLERS)
-		goto exit;
+	{
+		*streamIn  = NULL;
+		*streamOut = NULL;
+		return -1;
+	}
 
-	StreamTcpHandlers[noOfTcpHandlers].my_tcp     = tcp_new();
-	StreamTcpHandlers[noOfTcpHandlers].clientAddr = clientAddr;
-	//StreamTcpHandlers[noOfTcpHandlers].srcPort = 	portNo;
-	StreamTcpHandlers[noOfTcpHandlers].dstPort = 	portNo;
+	StreamTcpHandlers[noOfTcpHandlers].my_tcp  = tcp_new();
+	StreamTcpHandlers[noOfTcpHandlers].dstPort = portNo;
 
-	tcp_bind(StreamTcpHandlers[noOfTcpHandlers].my_tcp, &bindAddress, portNo);
+	tcp_bind(StreamTcpHandlers[noOfTcpHandlers].my_tcp, NULL, portNo);
 	StreamTcpHandlers[noOfTcpHandlers].txBuffer   = NULL;
 
 	osSemaphoreDef_t tmp = {.controlblock = NULL};
@@ -53,12 +53,12 @@ FILE* openTcpStream(ip_addr_t bindAddress, ip_addr_t clientAddr, uint16_t portNo
 	StreamTcpHandlers[noOfTcpHandlers].rxSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
 	StreamTcpHandlers[noOfTcpHandlers].rxIrqSemaphoreHandle = osSemaphoreCreate(&tmp, 1);
 
-	result = fopencookie(&StreamTcpHandlers[noOfTcpHandlers], "r+", dummy_tcp_cookie_funcs);
+	*streamIn  = fopencookie(&StreamTcpHandlers[noOfTcpHandlers], "r", dummy_tcp_cookie_funcs);
+	*streamOut = fopencookie(&StreamTcpHandlers[noOfTcpHandlers], "w", dummy_tcp_cookie_funcs);
 	noOfTcpHandlers++;
-exit:
-	return result;
-}
 
+	return 0;
+}
 
 static ssize_t procTcpBuffer(struct StreamTcpHandler *tcpHandler, char *buf, unsigned int size)
 {

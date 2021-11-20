@@ -18,7 +18,7 @@ const Command_t cmdListNormal[] =
   {cmd_history,         cmd_help_history,         historyFunction,             0},
   {cmd_status,          cmd_help_status,          statusFunction,              0},
   {cmd_enable,          cmd_help_enable,          enableFunction,              0},
-  {"suma",              "Adds the given numbers", sumFunction,                 CLI_STATE_MAX_ARGC},
+  {"sum",              "Adds the given numbers",  sumFunction,                 CLI_STATE_MAX_ARGC},
   {NULL               , NULL,                     NULL,                        0}
 };
 
@@ -43,7 +43,7 @@ const Command_t cmdListConfigure[] =
 
 static CliExRes_t statusFunction(CliState_t *state)
 {
-	fprintf(state->myStdInOut, "Status.... not implemented yet\r\n");
+	fprintf(state->strOut, "Status.... not implemented yet\r\n");
 	//printStatus(state->myStdInOut);
     return OK_SILENT;
 }
@@ -55,7 +55,7 @@ static CliExRes_t sumFunction(CliState_t *state)
 	{
 		suma += atoi(state->argv[i]);
 	}
-	fprintf(state->myStdInOut, "The sum of %d given numbers is equal to %d\r\n", state->argc-1, suma);
+	fprintf(state->strOut, "The sum of %d given numbers is equal to %d\r\n", state->argc-1, suma);
 
 
 	//printStatus(state->myStdInOut);

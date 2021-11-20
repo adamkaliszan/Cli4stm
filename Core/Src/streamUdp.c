@@ -35,19 +35,21 @@ cookie_io_functions_t dummy_udp_cookie_funcs = {
 
 
 
-FILE* openUdpStream(ip_addr_t bindAddress, ip_addr_t clientAddr, uint16_t portNo)
+int openUdpStreams(FILE **streamIn, FILE **streamOut, ip_addr_t clientAddr, uint16_t portNo)
 {
-	FILE *result = NULL;
-
 	if (noOfUdpHandlers >= NO_OF_UDP_STREAM_HANDLERS)
-		goto exit;
+	{
+		*streamIn = NULL;
+		*streamOut= NULL;
+		return -1;
+	}
 
 	StreamUdpHandlers[noOfUdpHandlers].my_udp     = udp_new();
 	StreamUdpHandlers[noOfUdpHandlers].clientAddr = clientAddr;
 	//StreamUdpHandlers[noOfUdpHandlers].srcPort = 	portNo;
 	StreamUdpHandlers[noOfUdpHandlers].dstPort = 	portNo;
 
-	udp_bind(StreamUdpHandlers[noOfUdpHandlers].my_udp, &bindAddress, portNo);
+	udp_bind(StreamUdpHandlers[noOfUdpHandlers].my_udp, NULL, portNo);
 	StreamUdpHandlers[noOfUdpHandlers].txBuffer   = NULL;
 
 	osSemaphoreDef_t tmp = {.controlblock = NULL};
@@ -55,10 +57,11 @@ FILE* openUdpStream(ip_addr_t bindAddress, ip_addr_t clientAddr, uint16_t portNo
 	StreamUdpHandlers[noOfUdpHandlers].rxSemaphoreHandle    = osSemaphoreCreate(&tmp, 1);
 	StreamUdpHandlers[noOfUdpHandlers].rxIrqSemaphoreHandle = osSemaphoreCreate(&tmp, 1);
 
-	result = fopencookie(&StreamUdpHandlers[noOfUdpHandlers], "r+", dummy_udp_cookie_funcs);
+	*streamIn = fopencookie(&StreamUdpHandlers[noOfUdpHandlers], "r", dummy_udp_cookie_funcs);
+	*streamOut= fopencookie(&StreamUdpHandlers[noOfUdpHandlers], "w", dummy_udp_cookie_funcs);
 	noOfUdpHandlers++;
-exit:
-	return result;
+
+	return 0;
 }
 
 
