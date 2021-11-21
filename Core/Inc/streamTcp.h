@@ -11,8 +11,8 @@
 #define NO_OF_TCP_SERVER_TASKS 1
 
 
-void startTcpServer(uint16_t portNo, osThreadId *tasks);
-int acceptTcpConnection(FILE** streamIn, FILE** streamOut, void const *arg);
+int startTcpServer(uint16_t portNo, osThreadId *tasks);
+int acceptTcpConnection(FILE** streamIn, FILE** streamOut, int handlerIdx);
 
 
 #endif /* INC_STREAM_TCP_H_ */

@@ -21,19 +21,14 @@
 
 struct StreamTcpHandler
 {
-	struct tcp_pcb *my_tcp;
+	struct tcp_pcb* my_tcp;
+	osThreadId      task;
 
 /// Receiver
-	osThreadId    task;
-//	SemaphoreId   rxSemaphoreHandle;
-//	osSemaphoreId   rxIrqSemaphoreHandle;
-	struct pbuf    *recBuffer;
+	struct pbuf*    recBuffer;
 	uint16_t        recBufRdPos;
-
-
 /// Transmitter
-//	osSemaphoreId   txSemaphoreHandle;
-	uint16_t      sentSize;
+	uint16_t        sentSize;
 };
 
 
@@ -57,6 +52,7 @@ cookie_io_functions_t dummy_tcp_cookie_funcs = {
 
 static err_t acceptCallback(void *arg, struct tcp_pcb *newpcb, err_t err)
 {
+	(void) arg;
 	struct StreamTcpHandler *tcpHandler = NULL;
     for (int i=0; i < NO_OF_TCP_SERVER_TASKS; i++)
     {
@@ -74,19 +70,23 @@ static err_t acceptCallback(void *arg, struct tcp_pcb *newpcb, err_t err)
     tcp_recv(newpcb, receivedCallback);
     tcp_sent(newpcb, sentCallback);
 
-
     osSignalSet(tcpHandler->task, SIG_DATA_CON);
 
-    return ERR_OK;
+    return err;
 }
 
 static err_t receivedCallback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err)
 {
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *) arg;
 	if (p == NULL)
+	{
 		osSignalSet(tcpHandler->task, SIG_DISCONNECTED);
+	}
 	else
+	{
+		tcpHandler->recBuffer = p;
 		osSignalSet(tcpHandler->task, SIG_DATA_IRQ);
+	}
 	return err;
 }
 
@@ -98,24 +98,36 @@ static err_t sentCallback(void *arg, struct tcp_pcb *tpcb, u16_t len)
 	return ERR_OK;
 }
 
-void startTcpServer(uint16_t portNo, osThreadId *tasks)
+int startTcpServer(uint16_t portNo, osThreadId *tasks)
 {
     for (int i=0; i < NO_OF_TCP_SERVER_TASKS; i++)
     {
-        StreamTcpHandlers[i].recBuffer = NULL;
-    	StreamTcpHandlers[i].task      = tasks[i];
+        StreamTcpHandlers[i].my_tcp      = NULL;
+        StreamTcpHandlers[i].task        = tasks[i];
+
+        StreamTcpHandlers[i].recBuffer   = NULL;
+        StreamTcpHandlers[i].recBufRdPos = 0;
+
+        StreamTcpHandlers[i].sentSize    = 0;
     }
 
-	struct tcp_pcb *sck = tcp_new();      // Step 1      Call tcp_new to create a pcb.
-	tcp_arg(sck, StreamTcpHandlers);      // Step 2      Optionally call tcp_arg to associate an application-specific value with the pcb.
-	tcp_bind(sck, NULL, portNo);          // Step 3      Call tcp_bind to specify the local IP address and port.
-	tcp_listen(sck);                      // Step 4      Call tcp_listen or tcp_listen_with_backlog. (note: these functions will free the pcb given as an argument and return a smaller listener pcb (e.g. tpcb = tcp_listen(tpcb)))
-    tcp_accept(sck, acceptCallback);      // Step 5      Call tcp_accept to specify the function to be called when a new connection arrives. Note that there is no possibility of a socket being accepted before specifying the callback, because this is all run on the tcpip_thread.
+	struct tcp_pcb *sck = tcp_new();              // Step 1      Call tcp_new to create a pcb.
+	//tcp_arg(sck, StreamTcpHandlers);            // Step 2      Optionally call tcp_arg to associate an application-specific value with the pcb.
+	tcp_bind(sck, NULL, portNo);                  // Step 3      Call tcp_bind to specify the local IP address and port.
+	struct tcp_pcb *new_tcp = tcp_listen(sck);    // Step 4      Call tcp_listen or tcp_listen_with_backlog. (note: these functions will free the pcb given as an argument and return a smaller listener pcb (e.g. tpcb = tcp_listen(tpcb)))
+	tcp_accept(new_tcp, acceptCallback);          // Step 5      Call tcp_accept to specify the function to be called when a new connection arrives. Note that there is no possibility of a socket being accepted before specifying the callback, because this is all run on the tcpip_thread.
+
+	return 0;
 }
 
-int acceptTcpConnection(FILE** streamIn, FILE** streamOut, void const *arg)
+int acceptTcpConnection(FILE** streamIn, FILE** streamOut, int handlerIdx)
 {
-	struct StreamTcpHandler * const handler =  (struct StreamTcpHandler * const) arg;
+	if (handlerIdx < 0)
+		return -1;
+	if (handlerIdx >= NO_OF_TCP_SERVER_TASKS)
+		return -2;
+
+	struct StreamTcpHandler *handler = StreamTcpHandlers + handlerIdx;
 	*streamIn  = fopencookie(handler, "r", dummy_tcp_cookie_funcs);
 	*streamOut = fopencookie(handler, "w", dummy_tcp_cookie_funcs);
 
@@ -140,7 +152,7 @@ static ssize_t procTcpBuffer(struct StreamTcpHandler *tcpHandler, char *buf, uns
 			pbuf_free(tcpHandler->recBuffer);
 			tcpHandler->recBuffer = nextRecBuffer;
 			tcpHandler->recBufRdPos = 0;
-			if (nextRecBuffer == NULL)
+			if (tcpHandler->recBuffer == NULL)
 				break;
 		}
 		else
@@ -160,10 +172,10 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
 
 	ssize_t result = 0;
-
+	osEvent ret;
 	while (tcpHandler->my_tcp == NULL)
 	{
-		osSignalWait(SIG_DATA_CON, osWaitForever);
+		ret = osSignalWait(SIG_DATA_CON, osWaitForever);
 	}
 
     if (tcpHandler->recBuffer != NULL)
@@ -173,8 +185,8 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
     else
     {
        	//tcp_recv(tcpHandler->my_tcp, receivedCallback);
-       	osEvent evResult = osSignalWait(SIG_DATA_IRQ | SIG_DISCONNECTED, osWaitForever);
-       	if (evResult.value.signals == SIG_DISCONNECTED)
+       	ret = osSignalWait(SIG_DATA_IRQ | SIG_DISCONNECTED, osWaitForever);
+       	if (ret.value.signals == SIG_DISCONNECTED)
        	{
        		tcpHandler->my_tcp = NULL;
        		return 0;
@@ -187,6 +199,8 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
 
 static ssize_t dummy_cookie_write(void *cookie, const char *buf, unsigned int size)
 {
+	return size;
+
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
 
 	while (tcpHandler->my_tcp == NULL)
