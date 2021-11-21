@@ -8,24 +8,11 @@
 
 #include "lwip/ip_addr.h"
 
-int openTcpStreams(FILE** stramIn, FILE** streamOut, uint16_t portNo);
-
-struct StreamTcpHandler
-{
-	struct tcp_pcb *my_tcp;
-	uint16_t        dstPort;
-
-/// Receiver
-	osSemaphoreId   rxSemaphoreHandle;
-	osSemaphoreId   rxIrqSemaphoreHandle;
-	struct pbuf    *recBuffer;
-	uint16_t        recBufRdPos;
+#define NO_OF_TCP_SERVER_TASKS 1
 
 
-/// Transmitter
-	osSemaphoreId   txSemaphoreHandle;
-	struct pbuf    *txBuffer;
-};
+int startTcpServer(uint16_t portNo, osThreadId *tasks);
+int acceptTcpConnection(FILE** streamIn, FILE** streamOut, int handlerIdx);
 
 
 #endif /* INC_STREAM_TCP_H_ */

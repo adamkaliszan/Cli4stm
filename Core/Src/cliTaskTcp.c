@@ -5,29 +5,53 @@
 #include "streamTcp.h"
 #include "vty.h"
 
-void StartCliTaskTcp(void const * argument)
-{
-	osDelay(1000);
 
+osThreadId tcpTasks[NO_OF_TCP_SERVER_TASKS];
+
+static void _cliTaskLoop(void const * argument);
+
+
+void StartCliTcpServer()
+{
+	for (int i=0; i < NO_OF_TCP_SERVER_TASKS; i++)
+	{
+		osThreadDef(tmpTask, _cliTaskLoop, osPriorityNormal, 0, 512);
+		tcpTasks[i] = osThreadCreate(osThread(tmpTask), NULL);
+	}
+	startTcpServer(55151, tcpTasks);
+}
+
+static void _cliTaskLoop(void const * argument)
+{
+	(void) argument;
+	static int taskIdx = 0;
+
+	int myTaskIdx = taskIdx++;
 	FILE *cliTcpStreamIn;
 	FILE *cliTcpStreamOut;
 	struct CmdState cliTcpState;
 
-
-	openTcpStreams(&cliTcpStreamIn, &cliTcpStreamOut, 55151);
-	cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
-
-	//Listen
-
-	for(;;)
+	for (;;)
 	{
-		int x = fgetc(cliTcpStreamIn);
-		if (x == -1)
-			continue;
+		acceptTcpConnection(&cliTcpStreamIn, &cliTcpStreamOut, myTaskIdx);
+		cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
 
-		cmdlineInputFunc(x, &cliTcpState);
-		cliMainLoop(&cliTcpState);
-		fflush(cliTcpStreamOut);
+		for (;;)
+		{
+			int x = fgetc(cliTcpStreamIn);
+			if (x == -1)
+			{
+				fclose(cliTcpStreamIn);
+				cliTcpStreamIn = NULL;
+				fclose(cliTcpStreamOut);
+				cliTcpStreamOut = NULL;
+				break;
+			}
+			cmdlineInputFunc(x, &cliTcpState);
+			cliMainLoop(&cliTcpState);
+			fflush(cliTcpStreamOut);
+		}
 	}
 	/* USER CODE END StartCliTask */
 }
+

@@ -21,6 +21,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "lwip.h"
+#include "cliTaskTcp.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -64,8 +65,8 @@ static void MX_GPIO_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_HRTIM_Init(void);
 void StartDefaultTask(void const * argument);
-void StartCliTaskSerial(void const * argument);
-void StartCliTaskUdp(void const * argument);
+extern void StartCliTaskSerial(void const * argument);
+extern void StartCliTaskUdp(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -437,48 +438,13 @@ void StartDefaultTask(void const * argument)
   /* init code for LWIP */
   MX_LWIP_Init();
   /* USER CODE BEGIN 5 */
+  StartCliTcpServer();
   /* Infinite loop */
   for(;;)
   {
 	osDelay(1);
   }
   /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_StartCliTaskSerial */
-/**
-* @brief Function implementing the cliSerialTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartCliTaskSerial */
-__weak void StartCliTaskSerial(void const * argument)
-{
-  /* USER CODE BEGIN StartCliTaskSerial */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartCliTaskSerial */
-}
-
-/* USER CODE BEGIN Header_StartCliTaskUdp */
-/**
-* @brief Function implementing the cliUdpTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartCliTaskUdp */
-__weak void StartCliTaskUdp(void const * argument)
-{
-  /* USER CODE BEGIN StartCliTaskUdp */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END StartCliTaskUdp */
 }
 
 /* MPU Configuration */
