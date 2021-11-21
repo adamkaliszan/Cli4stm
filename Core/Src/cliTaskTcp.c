@@ -31,20 +31,26 @@ static void _cliTaskLoop(void const * argument)
 	FILE *cliTcpStreamOut;
 	struct CmdState cliTcpState;
 
-	acceptTcpConnection(&cliTcpStreamIn, &cliTcpStreamOut, myTaskIdx);
-	cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
-
 	for (;;)
 	{
-		int x = fgetc(cliTcpStreamIn);
-		if (x == -1)
+		acceptTcpConnection(&cliTcpStreamIn, &cliTcpStreamOut, myTaskIdx);
+		cmdStateConfigure(&cliTcpState, cliTcpStreamIn, cliTcpStreamOut, cmdListNormal, NR_NORMAL);
+
+		for (;;)
 		{
-			continue;
+			int x = fgetc(cliTcpStreamIn);
+			if (x == -1)
+			{
+				fclose(cliTcpStreamIn);
+				cliTcpStreamIn = NULL;
+				fclose(cliTcpStreamOut);
+				cliTcpStreamOut = NULL;
+				break;
+			}
+			cmdlineInputFunc(x, &cliTcpState);
+			cliMainLoop(&cliTcpState);
+			fflush(cliTcpStreamOut);
 		}
-		cmdlineInputFunc(x, &cliTcpState);
-		cliMainLoop(&cliTcpState);
-		//osDelay(100);
-		fflush(cliTcpStreamOut);
 	}
 	/* USER CODE END StartCliTask */
 }

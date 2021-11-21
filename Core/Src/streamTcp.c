@@ -27,6 +27,7 @@ struct StreamTcpHandler
 
 static ssize_t dummy_cookie_writeTcp(void *cookie, const char *buf, unsigned int remainingSize);
 static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int remainingSize);
+static int dummy_cookie_closeTcp(void *cookie);
 
 static err_t receivedCallback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 static err_t acceptCallback(void *arg, struct tcp_pcb *newpcb, err_t err);
@@ -39,7 +40,7 @@ cookie_io_functions_t dummy_tcp_cookie_funcs = {
   .read = dummy_cookie_read,
   .write = dummy_cookie_writeTcp,
   .seek = 0,
-  .close = 0
+  .close = dummy_cookie_closeTcp
 };
 
 static err_t acceptCallback(void *arg, struct tcp_pcb *newpcb, err_t err)
@@ -86,7 +87,7 @@ static err_t sentCallback(void *arg, struct tcp_pcb *tpcb, u16_t len)
 {
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *) arg;
 	tcpHandler->sentSize = len;
-	//osSignalSet(tcpHandler->task, SIG_TX_IRQ); //TODO sprawdzić, czy wszystko zostało wysłane
+	osSignalSet(tcpHandler->task, SIG_TX_IRQ); //TODO sprawdzić, czy wszystko zostało wysłane
 	return ERR_OK;
 }
 
@@ -163,20 +164,18 @@ static ssize_t dummy_cookie_writeTcp(void *cookie, const char *buf, unsigned int
 {
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
 
-	while (tcpHandler->my_tcp == NULL)
-	{
-		osSignalWait(SIG_DATA_CON, osWaitForever);
-	}
+	if (tcpHandler->my_tcp == NULL)
+		return 0;
 
-	err_t result;
+	err_t tmpRes;
 	while (size > 0)
 	{
 		tcpHandler->sentSize = 0;
-		result = tcp_write(tcpHandler->my_tcp, buf, size, TCP_WRITE_FLAG_COPY);
-		result = tcp_output(tcpHandler->my_tcp);
-		//osSignalWait(SIG_TX_IRQ, osWaitForever);
+		tmpRes = tcp_write(tcpHandler->my_tcp, buf, size, TCP_WRITE_FLAG_COPY);
+		tmpRes = tcp_output(tcpHandler->my_tcp);
+		osSignalWait(SIG_TX_IRQ, osWaitForever);
 
-		if (result == ERR_OK)
+		if (tmpRes == ERR_OK)
 			break;
 		size-= size;//TODO włączyć obsługę notyfikacji... tcpHandler->sentSize;
 	}
@@ -203,13 +202,21 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
        	//tcp_recv(tcpHandler->my_tcp, receivedCallback);
        	ret = osSignalWait(SIG_DATA_IRQ | SIG_DISCONNECTED, osWaitForever);
        	if (ret.value.signals == SIG_DISCONNECTED)
-       	{
-       		tcpHandler->my_tcp = NULL;
        		return 0;
-       	}
+
        	result = procTcpBuffer(tcpHandler, buf, size);
     }
 
 	return result;
 }
 
+static int dummy_cookie_closeTcp(void *cookie)
+{
+	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
+	if (tcpHandler->my_tcp != NULL)
+	{
+		;//TODO check it it is required tcp_free(tcpHandler->my_tcp);
+	}
+	tcpHandler->my_tcp = NULL;
+	return 0;
+}
