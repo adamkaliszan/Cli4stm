@@ -1,10 +1,3 @@
-/*
- * streamSerial.c
- *
- *  Created on: Apr 11, 2021
- *      Author: Adam Kaliszan: adam.kaliszan@gmail.com
- */
-
 #include <stdio.h>
 #include <string.h>
 
@@ -32,20 +25,19 @@ struct StreamTcpHandler
 };
 
 
-static ssize_t dummy_cookie_write(void *cookie, const char *buf, unsigned int remainingSize);
+static ssize_t dummy_cookie_writeTcp(void *cookie, const char *buf, unsigned int remainingSize);
 static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int remainingSize);
 
 static err_t receivedCallback(void *arg, struct tcp_pcb *tpcb, struct pbuf *p, err_t err);
 static err_t acceptCallback(void *arg, struct tcp_pcb *newpcb, err_t err);
 static err_t sentCallback(void *arg, struct tcp_pcb *tpcb, u16_t len);
 
-
 static struct StreamTcpHandler StreamTcpHandlers[NO_OF_TCP_SERVER_TASKS];
 
 
 cookie_io_functions_t dummy_tcp_cookie_funcs = {
   .read = dummy_cookie_read,
-  .write = dummy_cookie_write,
+  .write = dummy_cookie_writeTcp,
   .seek = 0,
   .close = 0
 };
@@ -94,7 +86,7 @@ static err_t sentCallback(void *arg, struct tcp_pcb *tpcb, u16_t len)
 {
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *) arg;
 	tcpHandler->sentSize = len;
-	osSignalSet(tcpHandler->task, SIG_TX_IRQ); //TODO sprawdzić, czy wszystko zostało wysłane
+	//osSignalSet(tcpHandler->task, SIG_TX_IRQ); //TODO sprawdzić, czy wszystko zostało wysłane
 	return ERR_OK;
 }
 
@@ -167,6 +159,30 @@ static ssize_t procTcpBuffer(struct StreamTcpHandler *tcpHandler, char *buf, uns
 	return result;
 }
 
+static ssize_t dummy_cookie_writeTcp(void *cookie, const char *buf, unsigned int size)
+{
+	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
+
+	while (tcpHandler->my_tcp == NULL)
+	{
+		osSignalWait(SIG_DATA_CON, osWaitForever);
+	}
+
+	err_t result;
+	while (size > 0)
+	{
+		tcpHandler->sentSize = 0;
+		result = tcp_write(tcpHandler->my_tcp, buf, size, TCP_WRITE_FLAG_COPY);
+		result = tcp_output(tcpHandler->my_tcp);
+		//osSignalWait(SIG_TX_IRQ, osWaitForever);
+
+		if (result == ERR_OK)
+			break;
+		size-= size;//TODO włączyć obsługę notyfikacji... tcpHandler->sentSize;
+	}
+    return size;
+}
+
 static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
 {
 	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
@@ -197,26 +213,3 @@ static ssize_t dummy_cookie_read(void *cookie, char *buf, unsigned int size)
 	return result;
 }
 
-static ssize_t dummy_cookie_write(void *cookie, const char *buf, unsigned int size)
-{
-	return size;
-
-	struct StreamTcpHandler *tcpHandler = (struct StreamTcpHandler *)cookie;
-
-	while (tcpHandler->my_tcp == NULL)
-	{
-		osSignalWait(SIG_DATA_CON, osWaitForever);
-	}
-
-
-	while (size > 0)
-	{
-		tcpHandler->sentSize = 0;
-		tcp_write(tcpHandler->my_tcp, buf, size, 0);
-		tcp_output(tcpHandler->my_tcp);
-		osSignalWait(SIG_TX_IRQ, osWaitForever);
-
-		size-= tcpHandler->sentSize;
-	}
-    return size;
-}

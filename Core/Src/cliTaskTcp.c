@@ -15,7 +15,7 @@ void StartCliTcpServer()
 {
 	for (int i=0; i < NO_OF_TCP_SERVER_TASKS; i++)
 	{
-		osThreadDef(tmpTask, _cliTaskLoop, osPriorityNormal, 0, 256);
+		osThreadDef(tmpTask, _cliTaskLoop, osPriorityNormal, 0, 512);
 		tcpTasks[i] = osThreadCreate(osThread(tmpTask), NULL);
 	}
 	startTcpServer(55151, tcpTasks);
@@ -36,8 +36,6 @@ static void _cliTaskLoop(void const * argument)
 
 	for (;;)
 	{
-//		osDelay(1000);
-//		continue;
 		int x = fgetc(cliTcpStreamIn);
 		if (x == -1)
 		{
@@ -45,6 +43,7 @@ static void _cliTaskLoop(void const * argument)
 		}
 		cmdlineInputFunc(x, &cliTcpState);
 		cliMainLoop(&cliTcpState);
+		//osDelay(100);
 		fflush(cliTcpStreamOut);
 	}
 	/* USER CODE END StartCliTask */
